@@ -1,0 +1,8 @@
+<view class="intro">通过重新封装部分小程序原生api，渐进增强小程序组件通讯能力。</view>
+<view>
+  <view>pageA</view>
+  <button catchtap="clickSayHello1">pageA.clickSayHello1</button>
+  <button catchtap="clickSayHello2">pageA.clickSayHello2</button>
+  <componentA />
+  <componentB />
+</view>

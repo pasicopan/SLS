@@ -1,0 +1,6 @@
+{
+  "usingComponents": {
+    "componentA": "../componentA/componentA",
+    "componentB": "../componentB/componentB"
+  }
+}
