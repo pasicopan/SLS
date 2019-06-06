@@ -5,7 +5,7 @@
  * @description  给page component 增加 $on $emit $getCurrentPageComponentsByName，方便跨组件调用
  * FIXME: 使用component 构建页面将会出错
  * @author: pasico@163.com
- * @date 2019-06-2
+ * @date 2019-06-6
  */
 
 const _originPage = Page
@@ -13,6 +13,7 @@ const _originComponent = Component
 const _originBehavior = Behavior
 const _SLGlobal = {}
 const _defaultBehavior = { methods: {} }
+// 封装部分page 生命周期
 const PAGEEVENTS = [
   "onLoad",
   "onUnload",
@@ -21,23 +22,25 @@ const PAGEEVENTS = [
   "onHide",
   "onShareAppMessage"
 ]
-
-const PagesEventList = [[]]
-let tempPageEventList = []
-const PagesComponentList = [[]]
-let tempCurrentPageComponentList = []
-let delayEmitEventList = []
+// 存放page list 对应的事件，二维数组
+const __pagesEventList = [[]]
+// 存放page list 对应的组件，二维数组
+const __pagesComponentList = [[]]
+// 存放当前page 对应的组件，数组
+let __tempCurrentPageComponentList = []
+// 存放当前page emit失败的事件，page.onReady 后再尝试执行，数组
+let __delayEmitEventList = []
 
 /**
  * $getCurrentPageComponentsByName
+ * 查找当前page 内注册的Component
  * call it after page.onReady
  * @returns {array} components
  * @date 2019-06-03
  */
 function $getCurrentPageComponentsByName(a_componentName) {
   const pages = getCurrentPages()
-  // console.log("PagesComponentList=", PagesComponentList)
-  return PagesComponentList[pages.length - 1].filter(com => {
+  return __pagesComponentList[pages.length - 1].filter(com => {
     const componentName = com.name || com.is.split("/").pop()
     return componentName === a_componentName
   })
@@ -49,23 +52,11 @@ function $getCurrentPageComponentsByName(a_componentName) {
  * @date 2019-06-03
  */
 function copyTempCurrentPageComponentListToPagesComponentList() {
-  // console.log("copyTempCurrentPageComponentListToPagesComponentList")
-  // console.log("tempCurrentPageComponentList=", tempCurrentPageComponentList)
   const pages = getCurrentPages()
-  PagesComponentList[pages.length - 1] = tempCurrentPageComponentList.concat()
-  tempCurrentPageComponentList = []
-}
-/**
- * copytempPageEventListToPagesEventList
- * @description 复制当前页注册的事件到历史page 事件list当中，方便查询当前页有那些事件
- * @date 2019-06-03
- */
-function copytempPageEventListToPagesEventList() {
-  // console.log("copytempPageEventListToPagesEventList")
-  // console.log("PagesEventList=", PagesEventList)
-  const pages = getCurrentPages()
-  PagesEventList[pages.length - 1] = tempPageEventList.concat()
-  tempPageEventList = []
+  __pagesComponentList[
+    pages.length - 1
+  ] = __tempCurrentPageComponentList.concat()
+  __tempCurrentPageComponentList = []
 }
 
 /**
@@ -76,33 +67,37 @@ function copytempPageEventListToPagesEventList() {
  */
 function distoryCurrentPageEventlist(params) {
   const pages = getCurrentPages()
-  PagesEventList[pages.length - 1] = []
+  __pagesEventList[pages.length - 1] = []
 }
 
 /**
- * delayEmitEventList
+ * callDelayEmitEventList
  * 触发之前emit 失败的事件，例如component.attached $emit 在page.onReady $on 之前执行了
  * @date 2019-06-04
  * @param {*} params
  */
 function callDelayEmitEventList() {
-  // console.log("callDelayEmitEventList")
   const pages = getCurrentPages()
-  const eventList = PagesEventList[pages.length - 1]
-  delayEmitEventList.forEach(({ emitEventName, eventParams }) => {
-    eventList
-      .filter(({ eventName }) => emitEventName === eventName)
-      .forEach(({ eventName, eventCallback, com }) => {
-        console.warn(`emit event:${eventName} again now`)
+  const eventList = __pagesEventList[pages.length - 1]
+  __delayEmitEventList.forEach(({ emitEventName, eventParams }) => {
+    const matchEventList = eventList.filter(
+      ({ eventName }) => emitEventName === eventName
+    )
+    if (matchEventList.length > 0) {
+      matchEventList.forEach(({ eventName, eventCallback, com }) => {
+        // console.warn(`emit event:${eventName} again now`)
         eventCallback && eventCallback.call(com, ...eventParams)
       })
+    } else {
+      console.warn(`emit event \'${emitEventName}\' fail`)
+    }
   })
-  delayEmitEventList = []
+  __delayEmitEventList = []
 }
 
 /**
  * $emit
- * 触发事件
+ * 触发当前page 已经注册的事件
  * TODO: 搜索全部pages
  * @date 2019-06-03
  * @param {*} eventName
@@ -111,16 +106,16 @@ function callDelayEmitEventList() {
 function $emit(emitEventName, ...eventParams) {
   // console.log("sls $emit=", emitEventName, eventParams)
   const pages = getCurrentPages()
-  const eventList = PagesEventList[pages.length - 1]
+  const eventList = __pagesEventList[pages.length - 1]
   const emitList = eventList.filter(
     ({ eventName }) => emitEventName === eventName
   )
   // 如果component.attached 执行$emit, 这时候page.onReady 里面的$on 是还没有执行的，需要等page.onReady 后再尝试触发一次$emit
   if (emitList.length === 0) {
-    console.warn(
-      `can\'t find event:${emitEventName}, call it again after page.onReady`
-    )
-    delayEmitEventList.push({ emitEventName, eventParams })
+    // console.warn(
+    //   `can\'t find event:${emitEventName}, call it again after page.onReady`
+    // )
+    __delayEmitEventList.push({ emitEventName, eventParams })
   } else {
     emitList.forEach(({ com, eventCallback }) => {
       eventCallback && eventCallback.call(com, ...eventParams)
@@ -130,7 +125,7 @@ function $emit(emitEventName, ...eventParams) {
 
 /**
  * $on
- * 注册事件
+ * 在当前页注册事件
  * TODO: 增加eventOptions 个性化搜索配置
  * TODO: 优化数据结构方便搜索
  * @date 2019-06-03
@@ -138,13 +133,12 @@ function $emit(emitEventName, ...eventParams) {
  * @param {*} eventCallback
  */
 function $on(eventName, eventCallback, eventOptions) {
-  // console.log("sls $on=", eventName)
   const eventObj = { com: this, eventCallback, eventName }
 
   const pages = getCurrentPages()
-  const list = PagesEventList[pages.length - 1] || []
+  const list = __pagesEventList[pages.length - 1] || []
   list.push(eventObj)
-  PagesEventList[pages.length - 1] = list
+  __pagesEventList[pages.length - 1] = list
 }
 
 /**
@@ -206,30 +200,30 @@ function recursionBehaviorsForSLComponent(params) {
 }
 /**
  * SLComponent
- *
+ * 封装原生Component
  * @date 2019-05-30
  * @param {*} params
  */
 function SLComponent(params) {
-  // console.log("SLComponent,params=", params)
   const { created, attached, methods = {} } = params
   params.created = function() {
-    tempCurrentPageComponentList.push(this)
+    __tempCurrentPageComponentList.push(this)
     this.$emit = $emit
     this.$on = $on
     this.$getCurrentPageComponentsByName = $getCurrentPageComponentsByName
-    // console.log("SLComponent created,this=", this)
     created && created.call(this)
   }
   // 将组件方法自动注册成事件
   params.attached = function() {
     const componentName = this.name || this.is.split("/").pop()
     Object.keys(methods).forEach(m => {
+      if (m && m[0] === "_") {
+        console.warn("skip private method:" + m)
+        return
+      }
       const eventName = `${componentName}.${m}`
-      // console.log("eventName=", eventName)
       $on.call(this, eventName, methods[m])
     })
-    // console.log("SLComponent attached,params=", params)
     attached && attached.call(this)
   }
   recursionBehaviorsForSLComponent(params)
@@ -239,13 +233,11 @@ function SLComponent(params) {
 
 /**
  * SLPage
- *
+ * 封装原生Page
  * @date 2019-05-30
  * @param {*} params
  */
 function SLPage(params) {
-  // console.log("SLPage init params=", params)
-  // const { behaviors = [] } = params
   const { behaviors = [] } = params
   delete params.behaviors
   const resultParams = {
@@ -279,15 +271,10 @@ function SLPage(params) {
         cb.call(this, params)
       })
       if (pe === "onLoad") {
-        const pages = getCurrentPages()
-        // console.log("sls SLPage,onLoad,pages=", pages)
       } else if (pe === "onReady") {
-        // copytempPageEventListToPagesEventList()
         // 确保子组件已经全部构建好后
         copyTempCurrentPageComponentListToPagesComponentList()
       } else if (pe === "onUnload") {
-        const pages = getCurrentPages()
-        // console.log("sls SLPage,onUnload,pages=", pages)
         distoryCurrentPageEventlist()
       }
       if (peFun) {
@@ -307,7 +294,7 @@ function SLPage(params) {
 }
 /**
  * SLS
- *
+ * 初始化
  * @date 2019-05-30
  * @param {*} params
  */

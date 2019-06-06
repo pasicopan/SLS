@@ -1,1 +1,4 @@
-<button catchtap="say88" class="intro">componentB.say88</button>
+<view class="intro">
+  <text class="des">以下按钮将会由componentB 触发pageA 的onSay88 监听</text>
+  <button catchtap="say88">componentB.say88</button>
+</view>

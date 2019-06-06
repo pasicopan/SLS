@@ -2,3 +2,7 @@
   margin: 30px;
   text-align: center;
 }
+.des {
+  font-size: 24rpx;
+  color: #333;
+}

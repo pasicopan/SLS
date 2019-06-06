@@ -20,6 +20,14 @@
 - 注意：IDE(1.02.1905151) 直接在 chrome 打开分享网址好像调不起开发工具，请手动在开发工具选择导入片段
 - [https://developers.weixin.qq.com/s/Vf1TfVmH7B8E](https://developers.weixin.qq.com/s/Vf1TfVmH7B8E)
 
+### 使用须知
+
+- 暂时只能支持 Page 构建页面。（官方是允许使用 Component 构建页面的）
+- Page 只能在 onReady 后使用\$emit 等新 api
+- Component 只能在 attached 后使用\$emit 等新 api
+- Component 会自动给 methods 里面的公共方法注册事件\$on(`${componentName}.${methodName}`)，其他组件可以方便地通过\$emit(`${componentName}.${methodName}`) 直接调用组件内的公共方法；私有方法('\_'开头的方法名)则被忽略
+- 如果 component.attached 执行$emit, 这时候page.onReady 里面的$on 是还没有执行的，本工具会等 page.onReady 后再尝试触发一次\$emit
+
 ### how to use
 
 ```javascript
@@ -63,7 +71,7 @@ Page({
 Component({
   // 要求至少在attached 之后才能使用$on, $emit
   attached() {
-    this.$emit("hello", "baby")
+    this.$emit("componentA.sayHello", "Sam")
   },
   methods: {
     // 默认给component 的全部methods 执行this.$on(`${componentName}.${methodName}`,this.methodName)
@@ -113,10 +121,3 @@ Component({
 - $emit: 触发当前page 下使用$on 注册了的事件回调
 - \$on: 在当前 page 注册事件回调
 - \$getCurrentPageComponentsByName: 根据组件名字查找在当前 page 中的 component 实例。组件名字 可以是 Component 实例化的时候包含 name 字段。默认是文件名字（根据原生 Component.is 查询得到）
-
-### 使用须知
-
-- 暂时只能支持 Page 构建页面。（官方是允许使用 Component 构建页面的）
-- Page 只能在 onReady 后使用\$emit 等新 api
-- Component 只能在 attached 后使用\$emit 等新 api
-- 如果 component.attached 执行$emit, 这时候page.onReady 里面的$on 是还没有执行的，会触发一个警告。本工具会等 page.onReady 后再尝试触发一次\$emit
