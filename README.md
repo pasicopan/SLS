@@ -17,11 +17,13 @@
 ### wechat share snippet/ 微信小程序代码片段分享链接
 
 - 注意：从 1.02.1812180 开始代码片段格式更换，旧版本 IDE 将无法导入该版本及之后的 IDE 分享的代码片段
+- 注意：IDE(1.02.1905151) 直接在 chrome 打开分享网址好像调不起开发工具，请手动在开发工具选择导入片段
 - [https://developers.weixin.qq.com/s/Vf1TfVmH7B8E](https://developers.weixin.qq.com/s/Vf1TfVmH7B8E)
 
 ### how to use
 
 ```javascript
+// app.js
 // 在App({}) 前注入sls.js 文件
 const SLS = require("sls.js")
 // 执行 SLS({}), 可以此时配置全局page 公共默认方法。具体page 的方法会覆盖这里的配置
@@ -34,8 +36,9 @@ SLS({
   }
 })
 App({})
+```
 
-
+```javascript
 // page, pageA
 Page({
   // 要求至少在onReady 之后才能使用$on, $emit
@@ -53,8 +56,9 @@ Page({
     componentAList[0] && componentAList[0].sayHello("sweet heart")
   }
 })
+```
 
-
+```javascript
 // component, componentA.js
 Component({
   // 要求至少在attached 之后才能使用$on, $emit
@@ -71,6 +75,9 @@ Component({
     }
   }
 })
+```
+
+```javascript
 // component, componentB.js
 Component({
   // 要求至少在attached 之后才能使用$on, $emit
@@ -85,11 +92,13 @@ Component({
     }
   }
 })
+```
 
+```javascript
 // pageA.wxml
 <view>
- <componentA />
- <componentB />
+  <componentA />
+  <componentB />
 </view>
 ```
 
@@ -99,9 +108,15 @@ Component({
 - 重新封装 Component, 同理注入新 api ($emit, $on 等)
 - 重新封装 Behavior，根据实际调用的情况选择原生 Behavior Component 调用，或者选择非原生的给 Page 调用
 
+### api
+
+- $emit: 触发当前page 下使用$on 注册了的事件回调
+- \$on: 在当前 page 注册事件回调
+- \$getCurrentPageComponentsByName: 根据组件名字查找在当前 page 中的 component 实例。组件名字 可以是 Component 实例化的时候包含 name 字段。默认是文件名字（根据原生 Component.is 查询得到）
+
 ### 使用须知
 
 - 暂时只能支持 Page 构建页面。（官方是允许使用 Component 构建页面的）
 - Page 只能在 onReady 后使用\$emit 等新 api
 - Component 只能在 attached 后使用\$emit 等新 api
-- 如果 component.attached 执行$emit, 这时候page.onReady 里面的$on 是还没有执行的，本工具会等 page.onReady 后再尝试触发一次\$emit
+- 如果 component.attached 执行$emit, 这时候page.onReady 里面的$on 是还没有执行的，会触发一个警告。本工具会等 page.onReady 后再尝试触发一次\$emit
